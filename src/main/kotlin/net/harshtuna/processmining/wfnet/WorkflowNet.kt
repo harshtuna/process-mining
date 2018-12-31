@@ -21,8 +21,8 @@ data class Arc(
     val transition: Transition,
     val type: ArcType
 ) {
-    constructor(place: Place, transition: Transition): this(place, transition, ArcType.PT)
-    constructor(transition: Transition, place: Place): this(place, transition, ArcType.TP)
+    constructor(place: Place, transition: Transition) : this(place, transition, ArcType.PT)
+    constructor(transition: Transition, place: Place) : this(place, transition, ArcType.TP)
 }
 
 enum class ArcType { PT, TP }

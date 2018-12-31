@@ -43,12 +43,14 @@ internal class AlphaAlgorithmTest {
             WorkflowNet(
                 places = setOf(start, a2be, a2ce, be2d, ce2d, end),
                 transitions = setOf(a, b, c, d, e),
-                arcs = setOf(Arc(start, a),
+                arcs = setOf(
+                    Arc(start, a),
                     Arc(a, a2be), Arc(a2be, b), Arc(a2be, e),
                     Arc(a, a2ce), Arc(a2ce, c), Arc(a2ce, e),
                     Arc(b, be2d), Arc(e, be2d), Arc(be2d, d),
                     Arc(c, ce2d), Arc(e, ce2d), Arc(ce2d, d),
-                    Arc(d, end)),
+                    Arc(d, end)
+                ),
                 start = start,
                 end = end
             ),
