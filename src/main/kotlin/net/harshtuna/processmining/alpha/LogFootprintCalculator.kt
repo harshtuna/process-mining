@@ -2,10 +2,10 @@ package net.harshtuna.processmining.alpha
 
 object LogFootprintCalculator {
     fun footprint(eventLog: SimpleEventLog): SimpleFootprint {
-        val directSuccession = eventLog
-            .flatMap { it.windowed(2) }
+        val directSuccession = eventLog.asSequence()
+            .flatMap { it.windowed(2).asSequence() }
             .groupBy({ it[0] }, { it[1] })
-            .mapValues { (_, v) -> v.toSet() }
+            .mapValues { it.value.toSet() }
 
         val events = eventLog.flatten().distinct()
         return events.map { first ->

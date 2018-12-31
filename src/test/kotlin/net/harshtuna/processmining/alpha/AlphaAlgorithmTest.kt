@@ -85,5 +85,28 @@ internal class AlphaAlgorithmTest {
                 )
             )
         )
+        assertEquals(
+            listOf(
+                setOf("a") to setOf("b"),
+                setOf("b") to setOf("c", "e"),
+                setOf("c", "e") to setOf("d"),
+                setOf("a") to setOf("e")
+            ),
+            AlphaAlgorithm.splitByCausality(
+                setOf(
+                    listOf("a", "b", "c", "d"),
+                    listOf("a", "b", "e", "d"),
+                    listOf("a", "e", "d")
+                )
+            )
+        )
+        assertEquals(
+            listOf<Pair<Set<Event>, Set<Event>>>(),
+            AlphaAlgorithm.splitByCausality(
+                setOf(
+                    listOf("a", "a", "b")
+                )
+            )
+        )
     }
 }

@@ -41,14 +41,15 @@ object AlphaAlgorithm {
     }
 
     private fun splitByCausality(
-        causality: MutableSet<Pair<Event, Event>>,
-        parallel: MutableSet<Pair<Event, Event>>
+        causality: Set<Pair<Event, Event>>,
+        parallel: Set<Pair<Event, Event>>
     ): List<Pair<Set<Event>, Set<Event>>> = causality.asSequence()
         .filterNot { (first, second) -> (first to first) in parallel || (second to second) in parallel }
         .fold(mutableListOf<Pair<MutableSet<Event>, MutableSet<Event>>>()) { acc, (first, second) ->
+            // todo - optimize
             acc.filter { (cause, effect) ->
-                cause.all { it to first !in parallel && it to second in causality } &&
-                        effect.all { it to second !in parallel && first to it in causality }
+                cause.all { isChoice(it, first, causality, parallel) && it to second in causality } &&
+                        effect.all { isChoice(it, second, causality, parallel) && first to it in causality }
             }.ifEmpty {
                 listOf(mutableSetOf<Event>() to mutableSetOf<Event>()).apply {
                     acc.addAll(this)
@@ -59,6 +60,13 @@ object AlphaAlgorithm {
             }
             acc
         }
+
+    private fun isChoice(
+        event1: Event,
+        event2: Event,
+        causality: Set<Pair<Event, Event>>,
+        parallel: Set<Pair<Event, Event>>
+    ) = event1 to event2 !in parallel && event1 to event2 !in causality && event2 to event1 !in causality
 
     private fun calculateEventRelationships(
         eventLog: SimpleEventLog
