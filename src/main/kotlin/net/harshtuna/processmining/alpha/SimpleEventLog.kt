@@ -2,6 +2,8 @@ package net.harshtuna.processmining.alpha
 
 typealias SimpleEventLog = Set<Trace>
 
-typealias Trace = List<String>
+typealias Trace = List<Event>
 
-typealias SimpleFootprint = Map<String, Map<String, EventRelation>>
+typealias Event = String
+
+typealias SimpleFootprint = Map<Event, Map<Event, EventRelation>>

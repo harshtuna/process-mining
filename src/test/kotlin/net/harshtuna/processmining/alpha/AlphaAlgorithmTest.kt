@@ -73,9 +73,9 @@ internal class AlphaAlgorithmTest {
         assertEquals(
             listOf(
                 setOf("a") to setOf("b", "e"),
+                setOf("c", "e") to setOf("d"),
                 setOf("a") to setOf("c", "e"),
-                setOf("b", "e") to setOf("d"),
-                setOf("c", "e") to setOf("d")
+                setOf("b", "e") to setOf("d")
             ),
             AlphaAlgorithm.splitByCausality(
                 setOf(

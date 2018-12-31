@@ -9,65 +9,75 @@ import net.harshtuna.processmining.wfnet.WorkflowNet
 
 object AlphaAlgorithm {
     fun apply(eventLog: SimpleEventLog): WorkflowNet {
-        val transitions = eventLog.flatten().distinct().map { Transition(it) }.toSet()
-        // todo - simplify
-        val firstTransitions = eventLog.map { event -> transitions.first { it.name == event.first() } }.toSet()
-        val lastTransitions = eventLog.map { event -> transitions.first { it.name == event.last() } }.toSet()
-        val (innerPlaces, innerArcs) = splitByCausality(eventLog).fold(mutableSetOf<Place>() to mutableSetOf<Arc>()) { acc, (cause, effect) ->
-            val (places, arcs) = acc
-            val place = Place(cause.joinToString(",") + " -> " + effect.joinToString(","))
-            places.add(place)
-            cause.map { event -> transitions.first { it.name == event } }.forEach { arcs.add(Arc(it, place)) }
-            effect.map { event -> transitions.first { it.name == event } }.forEach { arcs.add(Arc(place, it)) }
-            acc
-        }
+        val transitions = eventLog.flatten().distinct().map { Transition(it) }.associateBy { it.name }
+        val firstTransitions = eventLog.mapNotNull { transitions[it.first()] }.toSet()
+        val lastTransitions = eventLog.mapNotNull { transitions[it.last()] }.toSet()
+        val (innerPlaces, innerArcs) = splitByCausality(eventLog)
+            .fold(mutableSetOf<Place>() to mutableSetOf<Arc>()) { acc, (cause, effect) ->
+                val (places, arcs) = acc
+                Place(cause.joinToString(",") + " -> " + effect.joinToString(",")).apply {
+                    places.add(this)
+                    cause.mapNotNull { transitions[it] }.forEach { arcs.add(Arc(it, this)) }
+                    effect.mapNotNull { transitions[it] }.forEach { arcs.add(Arc(this, it)) }
+                }
+                acc
+            }
         val places = innerPlaces + setOf(start, end)
         val arcs = innerArcs +
                 firstTransitions.map { Arc(start, it) }.toSet() +
                 lastTransitions.map { Arc(it, end) }.toSet()
         return WorkflowNet(
             places = places,
-            transitions = transitions,
+            transitions = transitions.values.toSet(),
             arcs = arcs,
             start = start,
             end = end
         )
     }
 
-    // fixme - brute force, optimize
-    internal fun splitByCausality(eventLog: SimpleEventLog): List<Pair<Set<String>, Set<String>>> {
-        val footprint = LogFootprintCalculator.footprint(eventLog)
-        val result = mutableListOf<Pair<MutableSet<String>, MutableSet<String>>>()
-        footprint.forEach { first ->
-            first.value.forEach { second ->
-                if (
-                    second.value == EventRelation.CAUSALITY &&
-                    footprint[first.key]?.get(first.key) == EventRelation.CHOICE &&
-                    footprint[second.key]?.get(second.key) == EventRelation.CHOICE
-                ) {
-                    result.filter { (cause, effect) ->
-                        cause.all {
-                            footprint[it]?.get(first.key) == EventRelation.CHOICE &&
-                                    footprint[it]?.get(second.key) == EventRelation.CAUSALITY
-                        } && effect.all {
-                            footprint[it]?.get(second.key) == EventRelation.CHOICE &&
-                                    footprint[first.key]?.get(it) == EventRelation.CAUSALITY
-                        }
-                    }
-                        .let {
-                            if (it.isEmpty()) listOf(mutableSetOf<String>() to mutableSetOf<String>()).apply {
-                                result.addAll(
-                                    this
-                                )
-                            } else it
-                        }
-                        .forEach { causeEffectPair ->
-                            causeEffectPair.first.add(first.key)
-                            causeEffectPair.second.add(second.key)
-                        }
-                }
-            }
-        }
-        return result
+    internal fun splitByCausality(eventLog: SimpleEventLog): List<Pair<Set<Event>, Set<Event>>> {
+        val (causality, parallel) = calculateEventRelationships(eventLog)
+        return splitByCausality(causality, parallel)
     }
+
+    private fun splitByCausality(
+        causality: MutableSet<Pair<Event, Event>>,
+        parallel: MutableSet<Pair<Event, Event>>
+    ): List<Pair<Set<Event>, Set<Event>>> = causality.asSequence()
+        .filterNot { (first, second) -> (first to first) in parallel || (second to second) in parallel }
+        .fold(mutableListOf<Pair<MutableSet<Event>, MutableSet<Event>>>()) { acc, (first, second) ->
+            acc.filter { (cause, effect) ->
+                cause.all { it to first !in parallel && it to second in causality } &&
+                        effect.all { it to second !in parallel && first to it in causality }
+            }.ifEmpty {
+                listOf(mutableSetOf<Event>() to mutableSetOf<Event>()).apply {
+                    acc.addAll(this)
+                }
+            }.forEach { (cause, effect) ->
+                cause.add(first)
+                effect.add(second)
+            }
+            acc
+        }
+
+    private fun calculateEventRelationships(
+        eventLog: SimpleEventLog
+    ): Pair<MutableSet<Pair<Event, Event>>, MutableSet<Pair<Event, Event>>> = eventLog.asSequence()
+        .flatMap { it.windowed(2).asSequence() }
+        .map { it[0] to it[1] }
+        .fold(mutableSetOf<Pair<Event, Event>>() to mutableSetOf()) { acc, it ->
+            fun noop() {}
+            val (causality, parallel) = acc
+            when {
+                it in causality -> noop()
+                it in parallel -> noop()
+                it.first == it.second -> parallel.add(it)
+                causality.remove(it.second to it.first) -> {
+                    parallel.add(it.second to it.first)
+                    parallel.add(it)
+                }
+                else -> causality.add(it)
+            }
+            acc
+        }
 }
