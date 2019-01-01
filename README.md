@@ -1,4 +1,4 @@
-#Process Mining Stuff
+# Process Mining Stuff
 
 Simplistic implementation of various process mining algorithms. For research and production use see
 * http://www.promtools.org
